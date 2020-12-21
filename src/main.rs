@@ -1,8 +1,8 @@
 use std::fs;
 use std::env;
-
 mod parser;
-mod generator;
+mod code_writer;
+
 fn main() {
     let args: Vec<String> = env::args().collect();
     if args.len() != 2 {
@@ -13,6 +13,8 @@ fn main() {
 
     let in_file_name = args[1].to_owned();
     let input = fs::read_to_string(in_file_name).unwrap();
-    // let commands = parser::parse(&input);
-    // print!("{}", generator::(commands));
+    let commands = parser::parse(&input);
+    let mut writer = code_writer::CodeWriter::new();
+    writer.write_code(commands);
+    print!("{}", writer);
 }
