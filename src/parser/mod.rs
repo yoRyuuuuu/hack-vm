@@ -9,13 +9,12 @@ pub enum Command {
     Or,
     Neg,
     Not,
-    Stack(StackAction, Segment, i64)
-    // Label(&'a str),
-    // Goto(&'a str),
-    // If(&'a str),
-    // Funtion(&'a str),
-    // Return(&'a str),
-    // Call(&'a str),
+    Stack(StackAction, Segment, i64), // Label(&'a str),
+                                      // Goto(&'a str),
+                                      // If(&'a str),
+                                      // Funtion(&'a str),
+                                      // Return(&'a str),
+                                      // Call(&'a str)
 }
 #[derive(Debug, PartialEq)]
 pub enum Segment {
@@ -24,7 +23,7 @@ pub enum Segment {
     Argument,
     This,
     That,
-    // Temp,
+    Temp,
     // Pointer
 }
 
@@ -57,7 +56,7 @@ fn parse_command(line: &str) -> Command {
         l if l.starts_with("not") => Command::Not,
         l if l.starts_with("push") => parse_push_pop_command(line, StackAction::Push),
         l if l.starts_with("pop") => parse_push_pop_command(line, StackAction::Pop),
-        _ => unreachable!()
+        _ => unreachable!(),
     }
 }
 
@@ -67,26 +66,11 @@ fn parse_push_pop_command(line: &str, action: StackAction) -> Command {
 
     match segment {
         "constant" => Command::Stack(action, Segment::Constant, num),
-        // "local" => Command::Stack(Segment::Local, num),
-        // "argument" => Command::Stack(Segment::Argument, num),
-        // "this" => Command::Push(Command::This,)
+        "local" => Command::Stack(action, Segment::Local, num),
+        "argument" => Command::Stack(action, Segment::Argument, num),
+        "this" => Command::Stack(action, Segment::This, num),
+        "that" => Command::Stack(action, Segment::That, num),
+        "temp" => Command::Stack(action, Segment::Temp, num),
         _ => panic!(),
-    }
-}
-
-
-mod tests {
-    use crate::parser::*;
-    fn test_parse_push_command() {
-        let input = "push constant 7";
-        assert_eq!(
-            parse_push_pop_command(input, StackAction::Push),
-            Command::Stack(StackAction::Push, Segment::Constant, 7)
-        );
-        let input = "push constant 8";
-        assert_eq!(
-            parse_push_pop_command(input, StackAction::Pop),
-            Command::Stack(StackAction::Push, Segment::Constant, 7)
-        );
     }
 }

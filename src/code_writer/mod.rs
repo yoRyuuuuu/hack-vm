@@ -15,7 +15,7 @@ impl CodeWriter {
     pub fn write_code(&mut self, commands: Vec<Command>) {
         for command in commands {
             match command {
-                Command::Stack(act, seg, val) => self.write_push(act, seg, val),
+                Command::Stack(act, seg, index) => self.write_push_pop(act, seg, index),
                 Command::Add => self.write_binary_operation("+"),
                 Command::Sub => self.write_binary_operation("-"),
                 Command::And => self.write_binary_operation("&"),
@@ -29,25 +29,10 @@ impl CodeWriter {
         }
     }
 
-    fn write_push(&mut self, act: StackAction, seg: Segment, val: i64) {
-        if act == StackAction::Push {
-            match seg {
-                Segment::Constant => {
-                    self.set_a(&val.to_string());
-                    self.set_d_from_a();
-                    self.set_a("SP");
-                    self.set_a_from_m();
-                    self.set_m_from_d();
-                    self.set_a("SP");
-                    self.inc_m();
-                }
-                Segment::Argument => {}
-                Segment::Local => {}
-                Segment::This => {}
-                Segment::That => {}
-            }
-        } else {
-
+    fn write_push_pop(&mut self, act: StackAction, seg: Segment, index: i64) {
+        match act {
+            StackAction::Push => self.write_push_segment(seg, index),
+            StackAction::Pop => self.write_pop_segment(seg, index),
         }
     }
 
@@ -103,8 +88,68 @@ impl CodeWriter {
         self.inc_m();
     }
 
-    fn set_a(&mut self, val: &str) {
-        self.append_lines(&format!("@{}", val));
+    fn write_push_segment(&mut self, seg: Segment, index: i64) {
+        let symbol = match seg {
+            Segment::Constant => index.to_string(),
+            Segment::Local => "LCL".to_string(),
+            Segment::Argument => "ARG".to_string(),
+            Segment::That => "THAT".to_string(),
+            Segment::This => "THIS".to_string(),
+            Segment::Temp => (5 + index).to_string(),
+        };
+
+        self.set_a(&symbol);
+        match seg {
+            Segment::Constant => self.set_d_from_a(),
+            Segment::Temp => self.set_d_from_m(),
+            _ => {
+                self.set_a_from_m();
+                self.inc_a(index);
+                self.set_d_from_m();
+            }
+        }
+
+        self.set_a("SP");
+        self.set_a_from_m();
+        self.set_m_from_d();
+        self.set_a("SP");
+        self.inc_m();
+    }
+
+    fn write_pop_segment(&mut self, seg: Segment, index: i64) {
+        let symbol = match seg {
+            Segment::Constant => index.to_string(),
+            Segment::Local => "LCL".to_string(),
+            Segment::Argument => "ARG".to_string(),
+            Segment::That => "THAT".to_string(),
+            Segment::This => "THIS".to_string(),
+            Segment::Temp => (5 + index).to_string(),
+        };
+
+        self.set_a("SP");
+        self.dec_m();
+        self.set_a_from_m();
+        self.set_d_from_m();
+
+        self.set_a(&symbol);
+        match seg {
+            Segment::Temp => (),
+            _ => {
+                self.set_a_from_m();
+                self.inc_a(index);
+            }
+        }
+        self.set_m_from_d();
+    }
+
+    fn inc_a(&mut self, index: i64) {
+        for _ in 0..index {
+            self.append_lines("A=A+1");
+        }
+    }
+
+    fn set_a(&mut self, symbol: &str) {
+        self.append_lines(&format!("@{}", symbol));
     }
 
     fn set_d_from_a(&mut self) {
@@ -145,5 +190,3 @@ impl Display for CodeWriter {
         )
     }
 }
-
-mod tests {}
