@@ -9,12 +9,13 @@ pub enum Command {
     Or,
     Neg,
     Not,
-    Stack(StackAction, Segment, i64), // Label(&'a str),
-                                      // Goto(&'a str),
-                                      // If(&'a str),
-                                      // Funtion(&'a str),
-                                      // Return(&'a str),
-                                      // Call(&'a str)
+    Stack(StackAction, Segment, i64),
+    // Label(&'a str),
+    // Goto(&'a str),
+    // If(&'a str),
+    // Funtion(&'a str),
+    // Return(&'a str),
+    // Call(&'a str)
 }
 #[derive(Debug, PartialEq)]
 pub enum Segment {
@@ -24,7 +25,7 @@ pub enum Segment {
     This,
     That,
     Temp,
-    // Pointer
+    Pointer,
 }
 
 #[derive(Debug, PartialEq)]
@@ -62,15 +63,16 @@ fn parse_command(line: &str) -> Command {
 
 fn parse_push_pop_command(line: &str, action: StackAction) -> Command {
     let split: Vec<&str> = line.split(' ').collect();
-    let (segment, num) = (split[1], split[2].parse::<i64>().unwrap());
+    let (segment, val) = (split[1], split[2].parse::<i64>().unwrap());
 
     match segment {
-        "constant" => Command::Stack(action, Segment::Constant, num),
-        "local" => Command::Stack(action, Segment::Local, num),
-        "argument" => Command::Stack(action, Segment::Argument, num),
-        "this" => Command::Stack(action, Segment::This, num),
-        "that" => Command::Stack(action, Segment::That, num),
-        "temp" => Command::Stack(action, Segment::Temp, num),
+        "constant" => Command::Stack(action, Segment::Constant, val),
+        "local" => Command::Stack(action, Segment::Local, val),
+        "argument" => Command::Stack(action, Segment::Argument, val),
+        "this" => Command::Stack(action, Segment::This, val),
+        "that" => Command::Stack(action, Segment::That, val),
+        "temp" => Command::Stack(action, Segment::Temp, val),
+        "pointer" => Command::Stack(action, Segment::Pointer, val),
         _ => panic!(),
     }
 }

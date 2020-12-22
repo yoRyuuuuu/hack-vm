@@ -96,12 +96,13 @@ impl CodeWriter {
             Segment::That => "THAT".to_string(),
             Segment::This => "THIS".to_string(),
             Segment::Temp => (5 + index).to_string(),
+            Segment::Pointer => (3 + index).to_string(),
         };
 
         self.set_a(&symbol);
         match seg {
             Segment::Constant => self.set_d_from_a(),
-            Segment::Temp => self.set_d_from_m(),
+            Segment::Temp | Segment::Pointer => self.set_d_from_m(),
             _ => {
                 self.set_a_from_m();
                 self.inc_a(index);
@@ -124,6 +125,7 @@ impl CodeWriter {
             Segment::That => "THAT".to_string(),
             Segment::This => "THIS".to_string(),
             Segment::Temp => (5 + index).to_string(),
+            Segment::Pointer => (3 + index).to_string(),
         };
 
         self.set_a("SP");
@@ -133,7 +135,7 @@ impl CodeWriter {
 
         self.set_a(&symbol);
         match seg {
-            Segment::Temp => (),
+            Segment::Temp | Segment::Pointer | Segment::Constant => (),
             _ => {
                 self.set_a_from_m();
                 self.inc_a(index);
