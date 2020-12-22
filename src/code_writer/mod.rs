@@ -38,8 +38,7 @@ impl CodeWriter {
 
     fn write_binary_operation(&mut self, op: &str) {
         self.dec_sp();
-        self.set_a_from_m();
-        self.set_d_from_m();
+        self.set_d_from_st();
         self.dec_sp();
         self.set_a_from_m();
         self.append_lines(&format!("M=M{}D", op));
@@ -55,8 +54,8 @@ impl CodeWriter {
 
     fn write_compare(&mut self, cmp: &str) {
         self.dec_sp();
-        self.set_a_from_m();
-        self.set_d_from_m();
+        self.set_d_from_st();
+
         self.dec_sp();
         self.set_a_from_m();
         self.append_lines(&format!("D=M-D"));
@@ -103,8 +102,7 @@ impl CodeWriter {
         let symbol = Self::get_symbol(&seg, &index);
 
         self.dec_sp();
-        self.set_a_from_m();
-        self.set_d_from_m();
+        self.set_d_from_st();
 
         self.set_a(&symbol);
         match seg {
@@ -134,6 +132,12 @@ impl CodeWriter {
         for _ in 0..index {
             self.append_lines("A=A+1");
         }
+    }
+
+    fn set_d_from_st(&mut self) {
+        self.set_a("SP");
+        self.set_a_from_m();
+        self.set_d_from_m();
     }
 
     fn set_a(&mut self, symbol: &str) {
