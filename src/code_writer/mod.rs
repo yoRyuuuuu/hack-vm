@@ -37,34 +37,27 @@ impl CodeWriter {
     }
 
     fn write_binary_operation(&mut self, op: &str) {
-        self.set_a("SP");
-        self.dec_m();
+        self.dec_sp();
         self.set_a_from_m();
         self.set_d_from_m();
-        self.set_a("SP");
-        self.dec_m();
+        self.dec_sp();
         self.set_a_from_m();
         self.append_lines(&format!("M=M{}D", op));
-        self.set_a("SP");
-        self.inc_m();
+        self.inc_sp();
     }
 
     fn write_prefix_operation(&mut self, op: &str) {
-        self.set_a("SP");
-        self.dec_m();
+        self.dec_sp();
         self.set_a_from_m();
         self.append_lines(&format!("M={}M", op));
-        self.set_a("SP");
-        self.inc_m();
+        self.inc_sp();
     }
 
     fn write_compare(&mut self, cmp: &str) {
-        self.set_a("SP");
-        self.dec_m();
+        self.dec_sp();
         self.set_a_from_m();
         self.set_d_from_m();
-        self.set_a("SP");
-        self.dec_m();
+        self.dec_sp();
         self.set_a_from_m();
         self.append_lines(&format!("D=M-D"));
         // 比較
@@ -74,8 +67,7 @@ impl CodeWriter {
         self.set_a("SP");
         self.set_a_from_m();
         self.append_lines(&format!("M=0"));
-        self.set_a("SP");
-        self.inc_m();
+        self.inc_sp();
 
         self.set_a(&(self.code.len() + 7).to_string());
         self.append_lines(&format!("0;JMP"));
@@ -84,8 +76,7 @@ impl CodeWriter {
         self.set_a("SP");
         self.set_a_from_m();
         self.append_lines(&format!("M=-1"));
-        self.set_a("SP");
-        self.inc_m();
+        self.inc_sp();
     }
 
     fn write_push_segment(&mut self, seg: Segment, index: i64) {
@@ -105,15 +96,13 @@ impl CodeWriter {
         self.set_a("SP");
         self.set_a_from_m();
         self.set_m_from_d();
-        self.set_a("SP");
-        self.inc_m();
+        self.inc_sp();
     }
 
     fn write_pop_segment(&mut self, seg: Segment, index: i64) {
         let symbol = Self::get_symbol(&seg, &index);
 
-        self.set_a("SP");
-        self.dec_m();
+        self.dec_sp();
         self.set_a_from_m();
         self.set_d_from_m();
 
@@ -173,6 +162,16 @@ impl CodeWriter {
 
     fn dec_m(&mut self) {
         self.append_lines("M=M-1");
+    }
+
+    fn inc_sp(&mut self) {
+        self.set_a("SP");
+        self.inc_m();
+    }
+
+    fn dec_sp(&mut self) {
+        self.set_a("SP");
+        self.dec_m();
     }
 
     fn append_lines(&mut self, line: &str) {
