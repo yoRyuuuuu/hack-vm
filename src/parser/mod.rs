@@ -26,6 +26,7 @@ pub enum Segment {
     That,
     Temp,
     Pointer,
+    Static,
 }
 
 #[derive(Debug, PartialEq)]
@@ -63,16 +64,17 @@ fn parse_command(line: &str) -> Command {
 
 fn parse_push_pop_command(line: &str, action: StackAction) -> Command {
     let split: Vec<&str> = line.split(' ').collect();
-    let (segment, val) = (split[1], split[2].parse::<i64>().unwrap());
+    let (segment, index) = (split[1], split[2].parse::<i64>().unwrap());
 
     match segment {
-        "constant" => Command::Stack(action, Segment::Constant, val),
-        "local" => Command::Stack(action, Segment::Local, val),
-        "argument" => Command::Stack(action, Segment::Argument, val),
-        "this" => Command::Stack(action, Segment::This, val),
-        "that" => Command::Stack(action, Segment::That, val),
-        "temp" => Command::Stack(action, Segment::Temp, val),
-        "pointer" => Command::Stack(action, Segment::Pointer, val),
-        _ => panic!(),
+        "constant" => Command::Stack(action, Segment::Constant, index),
+        "local" => Command::Stack(action, Segment::Local, index),
+        "argument" => Command::Stack(action, Segment::Argument, index),
+        "this" => Command::Stack(action, Segment::This, index),
+        "that" => Command::Stack(action, Segment::That, index),
+        "temp" => Command::Stack(action, Segment::Temp, index),
+        "pointer" => Command::Stack(action, Segment::Pointer, index),
+        "static" => Command::Stack(action, Segment::Static, index),
+        _ => unreachable!(),
     }
 }

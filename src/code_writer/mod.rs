@@ -89,15 +89,7 @@ impl CodeWriter {
     }
 
     fn write_push_segment(&mut self, seg: Segment, index: i64) {
-        let symbol = match seg {
-            Segment::Constant => index.to_string(),
-            Segment::Local => "LCL".to_string(),
-            Segment::Argument => "ARG".to_string(),
-            Segment::That => "THAT".to_string(),
-            Segment::This => "THIS".to_string(),
-            Segment::Temp => (5 + index).to_string(),
-            Segment::Pointer => (3 + index).to_string(),
-        };
+        let symbol = Self::get_symbol(&seg, &index);
 
         self.set_a(&symbol);
         match seg {
@@ -118,15 +110,7 @@ impl CodeWriter {
     }
 
     fn write_pop_segment(&mut self, seg: Segment, index: i64) {
-        let symbol = match seg {
-            Segment::Constant => index.to_string(),
-            Segment::Local => "LCL".to_string(),
-            Segment::Argument => "ARG".to_string(),
-            Segment::That => "THAT".to_string(),
-            Segment::This => "THIS".to_string(),
-            Segment::Temp => (5 + index).to_string(),
-            Segment::Pointer => (3 + index).to_string(),
-        };
+        let symbol = Self::get_symbol(&seg, &index);
 
         self.set_a("SP");
         self.dec_m();
@@ -142,6 +126,19 @@ impl CodeWriter {
             }
         }
         self.set_m_from_d();
+    }
+
+    fn get_symbol(seg: &Segment, index: &i64) -> String {
+        match seg {
+            Segment::Constant => index.to_string(),
+            Segment::Local => "LCL".to_string(),
+            Segment::Argument => "ARG".to_string(),
+            Segment::That => "THAT".to_string(),
+            Segment::This => "THIS".to_string(),
+            Segment::Temp => (5 + index).to_string(),
+            Segment::Pointer => (3 + index).to_string(),
+            Segment::Static => (16).to_string(),
+        }
     }
 
     fn inc_a(&mut self, index: i64) {
