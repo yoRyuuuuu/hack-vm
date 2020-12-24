@@ -25,8 +25,27 @@ impl CodeWriter {
                 Command::Gt => self.write_compare("JGT"),
                 Command::Neg => self.write_prefix_operation("-"),
                 Command::Not => self.write_prefix_operation("!"),
+                Command::Label(label_name) => self.write_label(label_name),
+                Command::Goto(label_name) => self.write_goto(label_name),
+                Command::If(label_name) => self.write_if(label_name),
             };
         }
+    }
+
+    fn write_label(&mut self, label_name: &str) {
+        self.append_lines(&format!("({})", label_name));
+    }
+
+    fn write_goto(&mut self, label_name: &str) {
+        self.set_a(label_name);
+        self.append_lines("0;JMP");
+    }
+
+    fn write_if(&mut self, label_name: &str) {
+        self.dec_sp();
+        self.set_d_from_st();
+        self.set_a(label_name);
+        self.append_lines("D;JNE");
     }
 
     fn write_push_pop(&mut self, act: StackAction, seg: Segment, index: i64) {
@@ -58,7 +77,7 @@ impl CodeWriter {
 
         self.dec_sp();
         self.set_a_from_m();
-        self.append_lines(&format!("D=M-D"));
+        self.append_lines("D=M-D");
         // 比較
         self.set_a(&(self.code.len() + 9).to_string());
         self.append_lines(&format!("D;{}", cmp));
@@ -66,7 +85,7 @@ impl CodeWriter {
         self.set_a("SP");
         self.set_a_from_m();
         self.append_lines(&format!("M=0"));
-        self.inc_sp();
+        self.inc_sp(); // 2命令
 
         self.set_a(&(self.code.len() + 7).to_string());
         self.append_lines(&format!("0;JMP"));

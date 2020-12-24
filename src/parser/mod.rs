@@ -1,5 +1,5 @@
 #[derive(Debug, PartialEq)]
-pub enum Command {
+pub enum Command<'a> {
     Add,
     Sub,
     Eq,
@@ -10,9 +10,9 @@ pub enum Command {
     Neg,
     Not,
     Stack(StackAction, Segment, i64),
-    // Label(&'a str),
-    // Goto(&'a str),
-    // If(&'a str),
+    Label(&'a str),
+    Goto(&'a str),
+    If(&'a str),
     // Funtion(&'a str),
     // Return(&'a str),
     // Call(&'a str)
@@ -58,6 +58,18 @@ fn parse_command(line: &str) -> Command {
         l if l.starts_with("not") => Command::Not,
         l if l.starts_with("push") => parse_push_pop_command(line, StackAction::Push),
         l if l.starts_with("pop") => parse_push_pop_command(line, StackAction::Pop),
+        l if l.starts_with("label") => {
+            let label_name = l.split(' ').nth(1).unwrap();
+            Command::Label(label_name)
+        }
+        l if l.starts_with("goto") => {
+            let label_name = l.split(' ').nth(1).unwrap();
+            Command::Goto(label_name)
+        }
+        l if l.starts_with("if") => {
+            let label_name = l.split(' ').nth(1).unwrap();
+            Command::If(label_name)
+        }
         _ => unreachable!(),
     }
 }
