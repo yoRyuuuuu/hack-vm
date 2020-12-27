@@ -4,7 +4,7 @@
 			"path": "."
 		},
 		{
-			"path": "../../nand2tetris"
+			"path": "../../nand2tetris/projects/08"
 		}
 	],
 	"settings": {}

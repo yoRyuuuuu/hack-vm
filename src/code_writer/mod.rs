@@ -28,6 +28,12 @@ impl CodeWriter {
                 Command::Label(label_name) => self.write_label(label_name),
                 Command::Goto(label_name) => self.write_goto(label_name),
                 Command::If(label_name) => self.write_if(label_name),
+                Command::Function(label_name, locals_num) => {
+                    self.write_function(label_name, locals_num)
+                }
+                Command::Return => {
+                    self.write_return();
+                }
             };
         }
     }
@@ -48,7 +54,62 @@ impl CodeWriter {
         self.append_lines("D;JNE");
     }
 
-    fn write_push_pop(&mut self, act: StackAction, seg: Segment, index: i64) {
+    fn write_call(&mut self, label_name: &str) {
+        let ret = &format!("return-{}", label_name);
+        let adds = [ret, "LCL", "ARG", "THIS", "THAT"];
+        for a in adds.iter() {
+            self.set_a(a);
+            self.set_d_from_a();
+            self.set_a("SP");
+            self.set_a_from_m();
+            self.set_m_from_d();
+            self.inc_sp();
+        }
+    }
+
+    fn write_function(&mut self, label_name: &str, locals_num: i16) {
+        self.write_label(label_name);
+        for _ in 0..locals_num {
+            self.set_a("0");
+            self.set_d_from_a();
+            self.set_a("SP");
+            self.set_a_from_m();
+            self.set_m_from_d();
+            self.inc_sp();
+        }
+    }
+
+    fn write_return(&mut self) {
+        self.dec_sp();
+        self.set_d_from_st();
+        self.set_a("ARG");
+        self.set_a_from_m();
+        self.set_m_from_d();
+
+        self.set_a("ARG");
+        self.set_a_from_m();
+        self.set_d_from_a();
+        self.set_a("SP");
+        self.append_lines("M=D+1");
+        let adds = ["THAT", "THIS", "ARG", "LCL"];
+        for (i, a) in adds.iter().enumerate() {
+            self.set_a("LCL");
+            self.set_a_from_m();
+            for _ in 0..i + 1 {
+                self.append_lines("A=A-1");
+            }
+            self.set_a_from_m();
+            self.set_d_from_a();
+            self.set_a(a);
+            self.set_m_from_d();
+        }
+
+        self.append_lines("A=A-1");
+        self.set_a_from_m();
+        self.append_lines("0;JMP");
+    }
+
+    fn write_push_pop(&mut self, act: StackAction, seg: Segment, index: i16) {
         match act {
             StackAction::Push => self.write_push_segment(seg, index),
             StackAction::Pop => self.write_pop_segment(seg, index),
@@ -97,7 +158,7 @@ impl CodeWriter {
         self.inc_sp();
     }
 
-    fn write_push_segment(&mut self, seg: Segment, index: i64) {
+    fn write_push_segment(&mut self, seg: Segment, index: i16) {
         let symbol = Self::get_symbol(&seg, &index);
 
         self.set_a(&symbol);
@@ -117,7 +178,7 @@ impl CodeWriter {
         self.inc_sp();
     }
 
-    fn write_pop_segment(&mut self, seg: Segment, index: i64) {
+    fn write_pop_segment(&mut self, seg: Segment, index: i16) {
         let symbol = Self::get_symbol(&seg, &index);
 
         self.dec_sp();
@@ -134,7 +195,7 @@ impl CodeWriter {
         self.set_m_from_d();
     }
 
-    fn get_symbol(seg: &Segment, index: &i64) -> String {
+    fn get_symbol(seg: &Segment, index: &i16) -> String {
         match seg {
             Segment::Constant => index.to_string(),
             Segment::Local => "LCL".to_string(),
@@ -147,7 +208,7 @@ impl CodeWriter {
         }
     }
 
-    fn inc_a(&mut self, index: i64) {
+    fn inc_a(&mut self, index: i16) {
         for _ in 0..index {
             self.append_lines("A=A+1");
         }

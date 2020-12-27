@@ -9,12 +9,12 @@ pub enum Command<'a> {
     Or,
     Neg,
     Not,
-    Stack(StackAction, Segment, i64),
+    Stack(StackAction, Segment, i16),
     Label(&'a str),
     Goto(&'a str),
     If(&'a str),
-    // Funtion(&'a str),
-    // Return(&'a str),
+    Function(&'a str, i16),
+    Return,
     // Call(&'a str)
 }
 #[derive(Debug, PartialEq)]
@@ -70,13 +70,21 @@ fn parse_command(line: &str) -> Command {
             let label_name = l.split(' ').nth(1).unwrap();
             Command::If(label_name)
         }
+        l if l.starts_with("function") => {
+            let label_name = l.split(' ').nth(1).unwrap();
+            let locals_num = l.split(' ').nth(2).unwrap().parse::<i16>().unwrap();
+            Command::Function(label_name, locals_num)
+        }
+        l if l.starts_with("return") => {
+            Command::Return
+        }
         _ => unreachable!(),
     }
 }
 
 fn parse_push_pop_command(line: &str, action: StackAction) -> Command {
     let split: Vec<&str> = line.split(' ').collect();
-    let (segment, index) = (split[1], split[2].parse::<i64>().unwrap());
+    let (segment, index) = (split[1], split[2].parse::<i16>().unwrap());
 
     match segment {
         "constant" => Command::Stack(action, Segment::Constant, index),
