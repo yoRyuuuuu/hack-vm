@@ -9,7 +9,7 @@ pub enum Command<'a> {
     Or,
     Neg,
     Not,
-    Stack(StackAction, Segment, i16),
+    Stack(StackAction, Segment<'a>, i16),
     Label(&'a str, &'a str),
     Goto(&'a str, &'a str),
     If(&'a str, &'a str),
@@ -18,7 +18,7 @@ pub enum Command<'a> {
     Return,
 }
 #[derive(Debug, PartialEq)]
-pub enum Segment {
+pub enum Segment<'a> {
     Constant,
     Local,
     Argument,
@@ -26,7 +26,7 @@ pub enum Segment {
     That,
     Temp,
     Pointer,
-    Static,
+    Static(&'a str),
 }
 
 #[derive(Debug, PartialEq)]
@@ -56,8 +56,8 @@ fn parse_command<'a>(line: &'a str, func_name: &'a str) -> Command<'a> {
         l if l.starts_with("or") => Command::Or,
         l if l.starts_with("neg") => Command::Neg,
         l if l.starts_with("not") => Command::Not,
-        l if l.starts_with("push") => parse_push_pop_command(line, StackAction::Push),
-        l if l.starts_with("pop") => parse_push_pop_command(line, StackAction::Pop),
+        l if l.starts_with("push") => parse_push_pop_command(line, StackAction::Push, func_name),
+        l if l.starts_with("pop") => parse_push_pop_command(line, StackAction::Pop, func_name),
         l if l.starts_with("label") => {
             let label_name = l.split(' ').nth(1).unwrap();
             Command::Label(label_name, func_name)
@@ -85,7 +85,7 @@ fn parse_command<'a>(line: &'a str, func_name: &'a str) -> Command<'a> {
     }
 }
 
-fn parse_push_pop_command(line: &str, action: StackAction) -> Command {
+fn parse_push_pop_command<'a>(line: &'a str, action: StackAction, func_name: &'a str) -> Command<'a> {
     let split: Vec<&str> = line.split(' ').collect();
     let (segment, index) = (split[1], split[2].parse::<i16>().unwrap());
 
@@ -97,7 +97,7 @@ fn parse_push_pop_command(line: &str, action: StackAction) -> Command {
         "that" => Command::Stack(action, Segment::That, index),
         "temp" => Command::Stack(action, Segment::Temp, index),
         "pointer" => Command::Stack(action, Segment::Pointer, index),
-        "static" => Command::Stack(action, Segment::Static, index),
+        "static" => Command::Stack(action, Segment::Static(func_name), index),
         _ => unreachable!(),
     }
 }

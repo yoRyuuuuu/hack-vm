@@ -40,8 +40,12 @@ impl CodeWriter {
                 Command::Gt => self.write_compare("JGT"),
                 Command::Neg => self.write_prefix_operation("-"),
                 Command::Not => self.write_prefix_operation("!"),
-                Command::Label(label_name, func_name) => self.write_label(label_name, Some(func_name)),
-                Command::Goto(label_name, func_name) => self.write_goto(label_name, Some(func_name)),
+                Command::Label(label_name, func_name) => {
+                    self.write_label(label_name, Some(func_name))
+                }
+                Command::Goto(label_name, func_name) => {
+                    self.write_goto(label_name, Some(func_name))
+                }
                 Command::If(label_name, func_name) => self.write_if(label_name, Some(func_name)),
                 Command::Function(label_name, locals_num) => {
                     self.write_function(label_name, locals_num)
@@ -80,7 +84,6 @@ impl CodeWriter {
     }
 
     fn write_call<'a>(&mut self, label_name: &str, locals_num: i16) {
-        self.append_lines(&format!("// call {} {}", label_name, locals_num));
         let count = self.return_adds.entry(label_name.to_string()).or_insert(0);
         *count += 1;
         let ret = format!("{}$RETURN{}", label_name, count);
@@ -121,7 +124,6 @@ impl CodeWriter {
     }
 
     fn write_function(&mut self, label_name: &str, locals_num: i16) {
-        self.append_lines(&format!("// function {} {}", label_name, locals_num));
         self.write_label(label_name, None);
         for _ in 0..locals_num {
             self.set_a("0");
@@ -134,7 +136,6 @@ impl CodeWriter {
     }
 
     fn write_return(&mut self) {
-        self.append_lines(&format!("// return"));
         self.set_a("LCL");
         self.set_d_from_m();
 
@@ -227,13 +228,12 @@ impl CodeWriter {
     }
 
     fn write_push_segment(&mut self, seg: Segment, index: i16) {
-        self.append_lines(&format!("// push {:?} {}", seg, index));
         let symbol = Self::get_symbol(&seg, &index);
 
         self.set_a(&symbol);
         match seg {
             Segment::Constant => self.set_d_from_a(),
-            Segment::Temp | Segment::Pointer => self.set_d_from_m(),
+            Segment::Temp | Segment::Pointer | Segment::Static(_) => self.set_d_from_m(),
             _ => {
                 self.set_a_from_m();
                 self.inc_a(index);
@@ -255,7 +255,7 @@ impl CodeWriter {
 
         self.set_a(&symbol);
         match seg {
-            Segment::Temp | Segment::Pointer | Segment::Constant => (),
+            Segment::Temp | Segment::Pointer | Segment::Constant | Segment::Static(_) => (),
             _ => {
                 self.set_a_from_m();
                 self.inc_a(index);
@@ -273,7 +273,9 @@ impl CodeWriter {
             Segment::This => "THIS".to_string(),
             Segment::Temp => (5 + index).to_string(),
             Segment::Pointer => (3 + index).to_string(),
-            Segment::Static => (16).to_string(),
+            Segment::Static(func_name) => {
+                format!("{}.{}", func_name, index)
+            }
         }
     }
 
@@ -338,7 +340,14 @@ impl CodeWriter {
     }
 
     fn get_line_num(&mut self) -> usize {
-        self.code.len() - self.code.iter().filter(|line| (line.starts_with("(") && line.ends_with(")") || line.starts_with("//"))).count()
+        self.code.len()
+            - self
+                .code
+                .iter()
+                .filter(|line| {
+                    line.starts_with("(") && line.ends_with(")") || line.starts_with("//")
+                })
+                .count()
     }
 }
 
