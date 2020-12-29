@@ -1,15 +1,30 @@
 use std::fmt::{Display, Formatter, Result};
 
 use crate::parser::*;
+use std::collections::HashMap;
 
 #[derive(Debug)]
 pub struct CodeWriter {
     pub code: Vec<String>,
+    pub return_adds: HashMap<String, i16>,
 }
 
 impl CodeWriter {
     pub fn new() -> Self {
-        Self { code: vec![] }
+        let mut writer = Self {
+            code: vec![],
+            return_adds: HashMap::new(),
+        };
+        writer.write_boot();
+        writer
+    }
+
+    fn write_boot(&mut self) {
+        self.set_a("256");
+        self.set_d_from_a();
+        self.set_a("SP");
+        self.set_m_from_d();
+        self.write_call("Sys.init", 0);
     }
 
     pub fn write_code(&mut self, commands: Vec<Command>) {
@@ -25,12 +40,13 @@ impl CodeWriter {
                 Command::Gt => self.write_compare("JGT"),
                 Command::Neg => self.write_prefix_operation("-"),
                 Command::Not => self.write_prefix_operation("!"),
-                Command::Label(label_name) => self.write_label(label_name),
-                Command::Goto(label_name) => self.write_goto(label_name),
-                Command::If(label_name) => self.write_if(label_name),
+                Command::Label(label_name, func_name) => self.write_label(label_name, Some(func_name)),
+                Command::Goto(label_name, func_name) => self.write_goto(label_name, Some(func_name)),
+                Command::If(label_name, func_name) => self.write_if(label_name, Some(func_name)),
                 Command::Function(label_name, locals_num) => {
                     self.write_function(label_name, locals_num)
                 }
+                Command::Call(label_name, locals_num) => self.write_call(label_name, locals_num),
                 Command::Return => {
                     self.write_return();
                 }
@@ -38,37 +54,75 @@ impl CodeWriter {
         }
     }
 
-    fn write_label(&mut self, label_name: &str) {
-        self.append_lines(&format!("({})", label_name));
+    fn write_label<'a>(&mut self, label_name: &'a str, func_name: Option<&'a str>) {
+        match func_name {
+            Some(func_name) => self.append_lines(&format!("({}${})", func_name, label_name)),
+            None => self.append_lines(&format!("({})", label_name)),
+        }
     }
 
-    fn write_goto(&mut self, label_name: &str) {
-        self.set_a(label_name);
+    fn write_goto<'a>(&mut self, label_name: &'a str, func_name: Option<&'a str>) {
+        match func_name {
+            Some(func_name) => self.set_a(&format!("{}${}", func_name, label_name)),
+            None => self.set_a(label_name),
+        }
         self.append_lines("0;JMP");
     }
 
-    fn write_if(&mut self, label_name: &str) {
+    fn write_if<'a>(&mut self, label_name: &'a str, func_name: Option<&'a str>) {
         self.dec_sp();
         self.set_d_from_st();
-        self.set_a(label_name);
+        match func_name {
+            Some(func_name) => self.set_a(&format!("{}${}", func_name, label_name)),
+            None => self.set_a(label_name),
+        }
         self.append_lines("D;JNE");
     }
 
-    fn write_call(&mut self, label_name: &str) {
-        let ret = &format!("return-{}", label_name);
-        let adds = [ret, "LCL", "ARG", "THIS", "THAT"];
+    fn write_call<'a>(&mut self, label_name: &str, locals_num: i16) {
+        self.append_lines(&format!("// call {} {}", label_name, locals_num));
+        let count = self.return_adds.entry(label_name.to_string()).or_insert(0);
+        *count += 1;
+        let ret = format!("{}$RETURN{}", label_name, count);
+
+        self.set_a(&ret);
+        self.set_d_from_a();
+        self.set_a("SP");
+        self.set_a_from_m();
+        self.set_m_from_d();
+        self.inc_sp();
+
+        let adds = ["LCL", "ARG", "THIS", "THAT"];
         for a in adds.iter() {
             self.set_a(a);
-            self.set_d_from_a();
+            self.set_d_from_m();
             self.set_a("SP");
             self.set_a_from_m();
             self.set_m_from_d();
             self.inc_sp();
         }
+
+        self.set_a("SP");
+        self.set_d_from_m();
+        for _ in 0..locals_num + 5 {
+            self.append_lines("D=D-1");
+        }
+        self.set_a("ARG");
+        self.set_m_from_d();
+
+        self.set_a("SP");
+        self.set_d_from_m();
+        self.set_a("LCL");
+        self.set_m_from_d();
+
+        self.write_goto(label_name, None);
+
+        self.append_lines(&format!("({})", ret));
     }
 
     fn write_function(&mut self, label_name: &str, locals_num: i16) {
-        self.write_label(label_name);
+        self.append_lines(&format!("// function {} {}", label_name, locals_num));
+        self.write_label(label_name, None);
         for _ in 0..locals_num {
             self.set_a("0");
             self.set_d_from_a();
@@ -80,31 +134,44 @@ impl CodeWriter {
     }
 
     fn write_return(&mut self) {
+        self.append_lines(&format!("// return"));
+        self.set_a("LCL");
+        self.set_d_from_m();
+
+        self.set_a("13");
+        self.set_m_from_d();
+
+        self.set_a("13");
+        self.set_a_from_m();
+        self.dec_a(5);
+        self.set_d_from_m();
+        self.set_a("14");
+        self.set_m_from_d();
+
         self.dec_sp();
-        self.set_d_from_st();
+        self.set_a_from_m();
+        self.set_d_from_m();
         self.set_a("ARG");
         self.set_a_from_m();
         self.set_m_from_d();
 
         self.set_a("ARG");
-        self.set_a_from_m();
-        self.set_d_from_a();
+        self.set_d_from_m();
+        self.append_lines("D=D+1");
         self.set_a("SP");
-        self.append_lines("M=D+1");
+        self.set_m_from_d();
+
         let adds = ["THAT", "THIS", "ARG", "LCL"];
         for (i, a) in adds.iter().enumerate() {
-            self.set_a("LCL");
+            self.set_a("13");
             self.set_a_from_m();
-            for _ in 0..i + 1 {
-                self.append_lines("A=A-1");
-            }
-            self.set_a_from_m();
-            self.set_d_from_a();
+            self.dec_a(i as i16 + 1);
+            self.set_d_from_m();
             self.set_a(a);
             self.set_m_from_d();
         }
 
-        self.append_lines("A=A-1");
+        self.set_a("14");
         self.set_a_from_m();
         self.append_lines("0;JMP");
     }
@@ -140,15 +207,16 @@ impl CodeWriter {
         self.set_a_from_m();
         self.append_lines("D=M-D");
         // 比較
-        self.set_a(&(self.code.len() + 9).to_string());
+        let num = self.get_line_num();
+        self.set_a(&(num + 7).to_string());
         self.append_lines(&format!("D;{}", cmp));
         // falseをスタックにpush
         self.set_a("SP");
         self.set_a_from_m();
         self.append_lines(&format!("M=0"));
-        self.inc_sp(); // 2命令
 
-        self.set_a(&(self.code.len() + 7).to_string());
+        let num = self.get_line_num();
+        self.set_a(&(num + 5).to_string());
         self.append_lines(&format!("0;JMP"));
         // trueをスタックにpush
         // -1を代入
@@ -159,6 +227,7 @@ impl CodeWriter {
     }
 
     fn write_push_segment(&mut self, seg: Segment, index: i16) {
+        self.append_lines(&format!("// push {:?} {}", seg, index));
         let symbol = Self::get_symbol(&seg, &index);
 
         self.set_a(&symbol);
@@ -214,6 +283,12 @@ impl CodeWriter {
         }
     }
 
+    fn dec_a(&mut self, index: i16) {
+        for _ in 0..index {
+            self.append_lines("A=A-1");
+        }
+    }
+
     fn set_d_from_st(&mut self) {
         self.set_a("SP");
         self.set_a_from_m();
@@ -260,6 +335,10 @@ impl CodeWriter {
 
     fn append_lines(&mut self, line: &str) {
         self.code.push(line.to_string());
+    }
+
+    fn get_line_num(&mut self) -> usize {
+        self.code.len() - self.code.iter().filter(|line| (line.starts_with("(") && line.ends_with(")") || line.starts_with("//"))).count()
     }
 }
 

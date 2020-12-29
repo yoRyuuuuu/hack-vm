@@ -10,12 +10,12 @@ pub enum Command<'a> {
     Neg,
     Not,
     Stack(StackAction, Segment, i16),
-    Label(&'a str),
-    Goto(&'a str),
-    If(&'a str),
+    Label(&'a str, &'a str),
+    Goto(&'a str, &'a str),
+    If(&'a str, &'a str),
     Function(&'a str, i16),
+    Call(&'a str, i16),
     Return,
-    // Call(&'a str)
 }
 #[derive(Debug, PartialEq)]
 pub enum Segment {
@@ -35,17 +35,17 @@ pub enum StackAction {
     Pop,
 }
 
-pub fn parse(input: &str) -> Vec<Command> {
+pub fn parse<'a>(input: &'a str, func_name: &'a str) -> Vec<Command<'a>> {
     input
         .lines()
         .map(|l| l.split("//").nth(0).unwrap())
         .filter(|l| *l != "")
         .map(|l| l.trim())
-        .map(|l| parse_command(l))
+        .map(|l| parse_command(l, func_name))
         .collect()
 }
 
-fn parse_command(line: &str) -> Command {
+fn parse_command<'a>(line: &'a str, func_name: &'a str) -> Command<'a> {
     match line {
         l if l.starts_with("add") => Command::Add,
         l if l.starts_with("sub") => Command::Sub,
@@ -60,23 +60,26 @@ fn parse_command(line: &str) -> Command {
         l if l.starts_with("pop") => parse_push_pop_command(line, StackAction::Pop),
         l if l.starts_with("label") => {
             let label_name = l.split(' ').nth(1).unwrap();
-            Command::Label(label_name)
+            Command::Label(label_name, func_name)
         }
         l if l.starts_with("goto") => {
             let label_name = l.split(' ').nth(1).unwrap();
-            Command::Goto(label_name)
+            Command::Goto(label_name, func_name)
         }
         l if l.starts_with("if") => {
             let label_name = l.split(' ').nth(1).unwrap();
-            Command::If(label_name)
+            Command::If(label_name, func_name)
         }
         l if l.starts_with("function") => {
             let label_name = l.split(' ').nth(1).unwrap();
             let locals_num = l.split(' ').nth(2).unwrap().parse::<i16>().unwrap();
             Command::Function(label_name, locals_num)
         }
-        l if l.starts_with("return") => {
-            Command::Return
+        l if l.starts_with("return") => Command::Return,
+        l if l.starts_with("call") => {
+            let label_name = l.split(' ').nth(1).unwrap();
+            let locals_num = l.split(' ').nth(2).unwrap().parse::<i16>().unwrap();
+            Command::Call(label_name, locals_num)
         }
         _ => unreachable!(),
     }
